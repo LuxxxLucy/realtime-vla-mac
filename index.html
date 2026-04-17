@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-time VLA on MacBook</title>
+  <link rel="stylesheet" href="https://edwardtufte.github.io/tufte-css/tufte.css" />
+</head>
+<body>
+<article>
+
+  <h1>Real-time VLA on MacBook</h1>
+
+  <section>
+    <p class="subtitle">Jialin Lu &middot; <a href="https://luxxxlucy.github.io">luxxxlucy.github.io</a></p>
+    <p style="font-style:italic; font-size:1.1rem; color:#6b6b6b; margin-top:-0.6rem; line-height:1;">April 2026 &middot; in progress</p>
+  </section>
+
+  <section>
+    <h2>Target</h2>
+    <p>
+      Run &pi;0 (and &pi;0.5) on Mac in realtime rates.
+      <label for="mn-dexmal" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-dexmal" class="margin-toggle"/>
+      <span class="marginnote">Dexmal showed that we can run &pi;0 with 30 Hz on a RTX 4090 &mdash;
+            see <em>Running VLAs at Real-time Speed</em> <a href="https://arxiv.org/abs/2510.26742">v1</a> and <a href="https://arxiv.org/abs/2603.26360">v2</a>.
+            <br>
+        Right now my numbers are based on my quite lame M4 MacBook Air.
+        RTX 4090 is a much more powerful card.</span>
+    </p>
+  </section>
+
+  <section>
+    <h2>Current Status</h2>
+
+    <p>
+      <label for="mn-fallback" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-fallback" class="margin-toggle"/>
+      <span class="marginnote">Worst case: If M4 cannot get there, we will fallback to the dirty road: move to a higher-spec M5 Pro/Max chip. The addition of neural accelerator and much wider memory bandwidth shall get us there.</span>
+    </p>
+
+    <figure>
+      <table>
+        <thead><tr><th>State</th><th>Rate</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Baseline (Vanilla PyTorch) &emsp;&emsp;&emsp;</td><td>&asymp;&nbsp;0.8&nbsp;Hz</td><td></td></tr>
+          <tr><td>Current</td><td>&asymp;&nbsp;2.4&nbsp;Hz</td><td style="color:#c0392b; font-weight:bold; white-space:nowrap;">&larr; いまここ</td></tr>
+          <tr><td>Near-term target</td><td><strong>5&nbsp;Hz</strong></td><td></td></tr>
+          <tr><td>Target</td><td><strong>30&nbsp;Hz</strong></td><td></td></tr>
+        </tbody>
+      </table>
+    </figure>
+
+  </section>
+
+</article>
+</body>
+</html>
