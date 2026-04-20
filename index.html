@@ -44,7 +44,7 @@
         <thead><tr><th>State</th><th>Rate</th><th></th></tr></thead>
         <tbody>
           <tr><td>Baseline (Vanilla PyTorch-MPS) &emsp;&emsp;&emsp;</td><td>&asymp;&nbsp;0.8&nbsp;Hz</td><td></td></tr>
-          <tr><td>Current (MLX&nbsp;+&nbsp;ANE&nbsp;+&nbsp;Swift)</td><td>&asymp;&nbsp;3.2&nbsp;Hz</td><td style="color:#c0392b; font-weight:bold; white-space:nowrap;">&larr; いまここ</td></tr>
+          <tr><td>Current (ObjC + CoreML, three engines concurrent)</td><td>&asymp;&nbsp;2.9&nbsp;Hz</td><td style="color:#c0392b; font-weight:bold; white-space:nowrap;">&larr; いまここ</td></tr>
           <tr><td>Near-term target</td><td><strong>5&nbsp;Hz</strong></td><td></td></tr>
           <tr>
             <td>Theoretical ceiling (M4, idealistic)</td>
@@ -58,7 +58,7 @@
     </figure>
 
     <p>
-    The major part of the computation, the Language model part requires &thinsp;224&nbsp;GFLOP compute, divided by the combined GPU + ANE peak (3.23 + 5.7 = 8.93&nbsp;TFLOPS) = 137&nbsp;ms &rarr; ~7.3&nbsp;Hz. This is also assuming a perfect split across engines at peak throughput and hides the other compute of, not physically realizable, just the hardware-ceiling reference.
+    The major part of the computation, the Language model part requires &thinsp;1224&nbsp;GFLOP compute, divided by the combined GPU + ANE peak (3.23 + 5.7 = 8.93&nbsp;TFLOPS) = 137&nbsp;ms &rarr; ~7.3&nbsp;Hz. This is also assuming a perfect split across engines at peak throughput, not physically realisable &mdash; just the hardware-ceiling reference.
     </p>
 
   </section>
@@ -72,7 +72,7 @@
 
     <ul>
       <li><strong>V</strong>ision &mdash; SigLIP-So400m, one 224&times;224 image &rarr; 256 tokens.</li>
-      <li><strong>L</strong>anguage &mdash; Gemma-1-2B prefix, bidirectional over 304 tokens (256 vision + 48 text). The text is following the Dexmal testing example</li>
+      <li><strong>L</strong>anguage &mdash; Gemma-1-2B prefix, bidirectional over 304 tokens (256 vision + 48 text). Text follows the Dexmal testing example.</li>
       <li><strong>AE</strong> (action expert) &mdash; Gemma-300M, 10 Euler steps of flow matching over 51 suffix tokens.</li>
     </ul>
 
@@ -81,40 +81,63 @@
     </p>
 
     <p>
-      <strong>L: 697&nbsp;ms &rarr; 227&nbsp;ms.</strong> Four steps got here:
+      <strong>Phase 0</strong> &mdash; fork the bottleneck apart. MLX port of L (fused Metal SDPA + <code>steel_gemm_fused</code>), alternative Metal backends (ggml / llama.cpp), hand-written fused-MLP kernels, ANE-GPU MLP bridging, and token-parallel MLP all characterise the ceilings; <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase0">realtime-vla-mac-phase0</a> has the logs.
     </p>
 
-    <ol>
-      <li><strong>MLX port</strong> of the prefix (fused Metal SDPA + <code>steel_gemm_fused</code>): 697&nbsp;&rarr;&nbsp;440&nbsp;ms. Hand-written Metal kernels and ggml/llama.cpp did not beat it.</li>
-      <li><strong>MLP on ANE</strong> via CoreML, attention on GPU via MLX: 440&nbsp;&rarr;&nbsp;385&nbsp;ms. ANE hits 14.5&nbsp;ms/layer on a single-layer MLP; 18-layer chained is 18.4&nbsp;ms/layer, not so ideal.</li>
-      <li><strong>Token-parallel MLP.</strong> For each MLP, which is now the bulk of bottleneck, we split <code>[0:a]</code> tokens to GPU, <code>[a:N]</code> to ANE concurrently; grid search lands at <code>a=104</code> to GPU and rest to ANE has the best result: now we have 385&nbsp;&rarr;&nbsp;331&nbsp;ms.</li>
-      <li><strong>Swift&nbsp;+&nbsp;CoreML&nbsp;+&nbsp;GCD dispatch</strong>, removing Python glue: 331&nbsp;&rarr;&nbsp;<strong>227&nbsp;ms</strong>. This is current status.</li>
-    </ol>
-
     <p>
-    <strong>Pipeline change: we can have async AE&nbsp;&Vert;&nbsp;V<sub>next</sub>.</strong> Once L finishes, the current frame's AE and the next frame's V are independent and can run on different engines. GCD parallelism of them should give us (AE&nbsp;&rarr;&nbsp;ANE, V<sub>next</sub>&nbsp;&rarr;&nbsp;GPU) around <strong>82&nbsp;ms/cycle</strong>.
+      <strong>Phase 1</strong> &mdash; ship it. Move the dispatch to pure Objective-C + CoreML, measure every stage on every engine, spread V, L, AE across three distinct engines so the steady-state cycle becomes <code>max(V, L, AE)</code> instead of <code>sum(&hellip;)</code>.
     </p>
 
     <figure>
       <table>
-        <thead><tr><th>stage</th><th>impl</th><th style="text-align:right">time</th></tr></thead>
+        <thead><tr><th>stage</th><th>engine</th><th style="text-align:right">p50 (standalone)</th><th style="text-align:right">p50 (concurrent)</th></tr></thead>
         <tbody>
-          <tr><td>V (vision)</td><td>CoreML ANE <em>(pending)</em></td><td style="text-align:right">~40&nbsp;ms</td></tr>
-          <tr><td>L (LLM prefix)</td><td>Swift, token-parallel <code>a=104</code></td><td style="text-align:right"><strong>227&nbsp;ms</strong></td></tr>
-          <tr><td>AE &Vert; V<sub>next</sub></td><td>GCD on ANE + GPU</td><td style="text-align:right"><strong>82&nbsp;ms</strong></td></tr>
-          <tr><td>first action (V + L + AE)</td><td></td><td style="text-align:right">~348&nbsp;ms</td></tr>
-          <tr><td>amortized cycle = L + max(AE, V<sub>next</sub>)</td><td></td><td style="text-align:right"><strong>309&nbsp;ms &rarr; 3.2&nbsp;Hz</strong></td></tr>
+          <tr><td>V (vision)</td><td>CoreML GPU</td><td style="text-align:right">83&nbsp;ms</td><td style="text-align:right">102&nbsp;ms</td></tr>
+          <tr><td>L (LLM prefix + K/V)</td><td>CoreML ANE</td><td style="text-align:right">305&nbsp;ms</td><td style="text-align:right">303&nbsp;ms</td></tr>
+          <tr><td>AE (10 Euler steps)</td><td>CoreML CPU (AMX)</td><td style="text-align:right">254&nbsp;ms</td><td style="text-align:right">326&nbsp;ms</td></tr>
+          <tr><td>first action (V&nbsp;&rarr;&nbsp;L&nbsp;&rarr;&nbsp;AE, serial)</td><td></td><td style="text-align:right">&mdash;</td><td style="text-align:right">726&nbsp;ms</td></tr>
+          <tr><td>steady-state cycle (three-engine concurrent)</td><td></td><td style="text-align:right"></td><td style="text-align:right"><strong>344&nbsp;ms &rarr; 2.9&nbsp;Hz</strong></td></tr>
         </tbody>
       </table>
     </figure>
 
     <p>
-      First-action is <strong>3.6&times;</strong> the PyTorch-MPS baseline (1&thinsp;237&nbsp;&rarr;&nbsp;348&nbsp;ms). 30&nbsp;Hz is hardware-limited on base M4 &mdash; the 224&nbsp;ms L floor alone is 8&times; the RTX&nbsp;4090's 27&nbsp;ms cycle. Next levers: port V and AE to ANE CoreML, measure the MLX&nbsp;&rarr;&nbsp;MPS KV bridge for AE, then engine-parallel runtime.
+      Every stage lives on its own engine &mdash; L on ANE doesn't contend with V on GPU doesn't contend with AE on CPU. Cycle is bottlenecked by L on ANE under concurrent load. V and AE slow ~20&nbsp;% from standalone because they share Unified Memory bandwidth; L on ANE stays flat because ANE has a dedicated datapath.
       <label for="mn-risks" class="margin-toggle">&#8853;</label>
       <input type="checkbox" id="mn-risks" class="margin-toggle"/>
-      <span class="marginnote">Main open risks: AE&nbsp;&rarr;&nbsp;ANE conversion (coremltools op gaps, dynamic KV), MLX&nbsp;&harr;&nbsp;MPS bridge cost on 17&nbsp;MB KV, and whether K=1 semantics of &pi;0's 2.5&nbsp;s action chunk caps the reactive rate.</span>
+      <span class="marginnote">Main open risks: sustained-cycle thermal behaviour (fanless M4 Air), fp16 Euler drift in AE (fp32 accumulator fix pending), and whether K=1 semantics of &pi;0's 2.5&nbsp;s action chunk cap the reactive rate.</span>
     </p>
 
+    <p>
+      Correctness: V / L match PyTorch fp32 with cos &ge; 0.9999 on every engine (ANE / GPU / CPU); AE matches to cos &ge; 0.99 (limited by fp16 Euler accumulator, engine-independent). CPU routing verified via <a href="https://github.com/LuxxxLucy/asmonitor">asmonitor</a> &mdash; ANE stays idle while <code>MLComputeUnits.cpuOnly</code> is in effect.
+    </p>
+
+  </section>
+
+  <section>
+    <h2>Code</h2>
+    <figure>
+      <table>
+        <thead><tr><th>repo</th><th>role</th><th>headline</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><a href="https://github.com/LuxxxLucy/pytorch-pi0-baseline">pytorch-pi0-baseline</a></td>
+            <td>PyTorch MPS reference</td>
+            <td>0.8&nbsp;Hz &mdash; <code>uv run baseline.py</code></td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase0">realtime-vla-mac-phase0</a></td>
+            <td>exploration log (MLX / llama.cpp / ggml / ANE-GPU bridging)</td>
+            <td>characterises the ceilings</td>
+          </tr>
+          <tr>
+            <td><a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase1">realtime-vla-mac-phase1</a></td>
+            <td>shipped ObjC + CoreML implementation</td>
+            <td><strong>2.9&nbsp;Hz</strong> on base M4 Air</td>
+          </tr>
+        </tbody>
+      </table>
+    </figure>
   </section>
 
 </article>
