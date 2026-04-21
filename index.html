@@ -3,142 +3,387 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Real-time VLA on MacBook</title>
+  <title>A VLA on (MacBook) Air</title>
+  <meta name="color-scheme" content="light only" />
   <link rel="stylesheet" href="https://edwardtufte.github.io/tufte-css/tufte.css" />
+  <style>
+    /* Force light mode regardless of OS preference (override tufte-css dark theme). */
+    @media (prefers-color-scheme: dark) {
+      html { background-color: #fffff8; color: #111; }
+      body { background-color: #fffff8; color: #111; }
+      a:link, a:visited { color: inherit; }
+      .sidenote, .marginnote { color: #111; }
+      hr { border-color: #ccc; }
+    }
+  </style>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <article>
 
-  <h1>Real-time VLA on MacBook</h1>
-
+  <h1>A VLA on (MacBook) Air</h1>
   <section>
-    <p class="subtitle">Jialin Lu &middot; <a href="https://luxxxlucy.github.io">luxxxlucy.github.io</a></p>
-    <p style="font-style:italic; font-size:1.1rem; color:#6b6b6b; margin-top:-0.6rem; line-height:1;">April 2026 &middot; in progress</p>
-  </section>
-
-  <section>
-    <h2>Target</h2>
     <p>
-      Run &pi;0 (and &pi;0.5) on Mac in realtime rates.
-      <label for="mn-dexmal" class="margin-toggle">&#8853;</label>
-      <input type="checkbox" id="mn-dexmal" class="margin-toggle"/>
-      <span class="marginnote">Dexmal showed that we can run &pi;0 with 30 Hz on a RTX 4090 &mdash;
-            see <em>Running VLAs at Real-time Speed</em> <a href="https://arxiv.org/abs/2510.26742">v1</a> and <a href="https://arxiv.org/abs/2603.26360">v2</a>.
-            <br>
-        Right now my numbers are based on my quite lame M4 MacBook Air.
-        RTX 4090 is a much more powerful card.</span>
+      <label for="mn-code" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-code" class="margin-toggle"/>
+      <span class="marginnote">
+        <strong>Code:</strong><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase3">phase3</a><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase3-experiments">phase3 experiment</a><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase2">phase2</a><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase2-experiments">phase2 experiments</a><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase1">phase1</a><br>
+        <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase0">phase0 experiments</a><br>
+        <a href="https://github.com/LuxxxLucy/pytorch-pi0-baseline">phase0 (pytorch-baseline)</a>
+      </span>
     </p>
+    <p class="subtitle"><a href="https://luxxxlucy.github.io">Jialin Lu</a></p>
+    <p style="font-style:italic; font-size:1.1rem; color:#6b6b6b; margin-top:-0.6rem; line-height:1;">April 24 2026</p>
   </section>
 
   <section>
-    <h2>Current Status</h2>
+    <br>
+    <br>
 
     <p>
-      <label for="mn-fallback" class="margin-toggle">&#8853;</label>
-      <input type="checkbox" id="mn-fallback" class="margin-toggle"/>
-      <span class="marginnote">Worst case: If M4 cannot get there, we will fallback to the dirty road: move to a higher-spec M5 Pro/Max chip. The addition of neural accelerator and much wider memory bandwidth shall get us there.</span>
+      Here we want to run a Vision-Language-Action (VLA) model on my MacBook Air.
+      Initially this is because I read a paper<label for="sn-dexmal" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-dexmal" class="margin-toggle"/>
+      <span class="sidenote">Ma et&nbsp;al., <em>Running VLAs at Real-time Speed</em>, <a href="https://arxiv.org/abs/2510.26742">arXiv&nbsp;2510.26742</a>.</span>
+      from Dexmal that manages to run &pi;0,<label for="sn-pi0" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-pi0" class="margin-toggle"/>
+      <span class="sidenote">Black et&nbsp;al., <em>&pi;0: A Vision-Language-Action Flow Model for General Robot Control</em>, <a href="https://arxiv.org/abs/2410.24164">arXiv&nbsp;2410.24164</a>.</span>
+      a VLA from Physical Intelligence, at realtime rates (30+&nbsp;Hz) on an RTX&nbsp;4090.
+      A fanless laptop has far less compute, but we want to test its limit.
+      Here we record our progress moving from 0.81&nbsp;Hz to 3.57&nbsp;Hz, a 4.42&times; boost.
     </p>
 
     <figure>
       <table>
-        <thead><tr><th>State</th><th>Rate</th><th></th></tr></thead>
+        <colgroup>
+          <col style="width: 30%" />
+          <col style="width: 10%" />
+          <col style="width: 25%" />
+        </colgroup>
+        <thead><tr><th>what happened</th><th style="text-align:right">rate</th><th></th></tr></thead>
         <tbody>
-          <tr><td>Baseline (Vanilla PyTorch-MPS) &emsp;&emsp;&emsp;</td><td>&asymp;&nbsp;0.8&nbsp;Hz</td><td></td></tr>
-          <tr><td>Current (ObjC + CoreML, three engines concurrent)</td><td>&asymp;&nbsp;2.9&nbsp;Hz</td><td style="color:#c0392b; font-weight:bold; white-space:nowrap;">&larr; いまここ</td></tr>
-          <tr><td>Near-term target</td><td><strong>5&nbsp;Hz</strong></td><td></td></tr>
-          <tr>
-            <td>Theoretical ceiling (M4, idealistic)</td>
-            <td>&asymp;&nbsp;7.3&nbsp;Hz</td>
-            <td>
-            </td>
-          </tr>
-          <tr><td>Target</td><td><strong>30&nbsp;Hz</strong></td><td></td></tr>
+          <tr><td>Baseline</td><td style="text-align:right">0.81&nbsp;Hz</td><td></td></tr>
+          <tr><td>Phase 1: CoreML with ANE</td><td style="text-align:right">1.83&nbsp;Hz</td><td></td></tr>
+          <tr><td>Phase 2: token parallelization and async scheduling</td><td style="text-align:right">3.08&nbsp;Hz</td><td></td></tr>
+          <tr><td>Phase 3: quantization</td><td style="text-align:right"><strong>3.57&nbsp;Hz</strong></td><td></td></tr>
+          <tr><td>Theoretical limit</td><td style="text-align:right">6.6&nbsp;Hz</td><td></td></tr>
+          <tr><td>RTX&nbsp;4090 (Dexmal realtime VLA)</td><td style="text-align:right">36.6&nbsp;Hz</td><td style="font-style:italic; white-space:nowrap;">&larr; 10.3&times; our rate with 16&times; compute</td></tr>
         </tbody>
       </table>
     </figure>
 
     <p>
-    The major part of the computation, the Language model part requires &thinsp;1224&nbsp;GFLOP compute, divided by the combined GPU + ANE peak (3.23 + 5.7 = 8.93&nbsp;TFLOPS) = 137&nbsp;ms &rarr; ~7.3&nbsp;Hz. This is also assuming a perfect split across engines at peak throughput, not physically realisable &mdash; just the hardware-ceiling reference.
+      &pi;0
+      is a 3.3-billion-parameter flow-matching VLA. It takes one (or more) RGB camera image and a short text instruction, and generates a chunk of future actions. It has three stages:
     </p>
+    <ul>
+      <li><strong>Vision (V):</strong> SigLIP-So400m turns one (or 2-view / 3-view) image into vision tokens.</li>
+      <li><strong>Vision + Language prefix (L):</strong> Gemma-1-2B runs bidirectional attention over vision + language tokens to build the joint prefix representation that will be used for generating action.</li>
+      <li><strong>Action expert (AE):</strong> a Gemma-300M runs 10 Euler steps of flow matching, attending back to the prefix KVs.</li>
+    </ul>
 
+    <p>
+      Now that we want to do optimization, we shall start from first principles along with some simple math to ground us at what is possible and what is not.
+      How much we can achieve is ultimately determined by our hardware.
+      Compared to an RTX 4090<label for="sn-rtx4090" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-rtx4090" class="margin-toggle"/>
+      <span class="sidenote">An RTX 4090 setup has roughly 16&times; our compute and 8&times; our memory bandwidth.</span>
+      on a Linux box, the main difference of having a MacBook is that:
+    </p>
+    <ol>
+      <li>It has mainly three computing devices: CPU, GPU, and the Apple Neural Engine (ANE).</li>
+      <li>It has a shared unified memory and its memory bandwidth constraints.
+        <label for="sn-memory" class="margin-toggle sidenote-number"></label>
+        <input type="checkbox" id="sn-memory" class="margin-toggle"/>
+        <span class="sidenote">Later we will find that even though the ANE is quite efficient (quicker than the GPU via MLX for inference tasks), ANE is a memory monster: when the ANE is fully active it consumes most of the available memory bandwidth.</span>
+      </li>
+    </ol>
+
+    <p>
+      What we can do from here, is isomorphic with respect to the above two points:
+    </p>
+    <ol>
+      <li>To utilize all the hardware, we need to dispatch the computation to all three devices so that we have maximal combined usage.</li>
+      <li>We need to do this under the constraint of the memory bandwidth.</li>
+    </ol>
+    <p>
+      Unlike some other places where I am more familiar with, I found it hard to estimate bandwidth utilization for ML inference tasks,
+      so I would like to calculate from the compute side instead. An oversimplified estimate<label for="sn-tflops-matmul" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-tflops-matmul" class="margin-toggle"/>
+      <span class="sidenote">The TFLOPS numbers below (3.23 GPU, 5.7 ANE, 1.8 CPU) are estimated based on <em>dense-matmul</em> operations, not architectural maxima nor advertised numbers. Apple advertises 38&nbsp;TOPS for the ANE (which is INT8 ops); halve once for fp16 we get ~19&nbsp;TFLOPS, but we measured ~5.7 for dense matmul.</span>
+      can give us a theoretical limit:
+    </p>
+    <p>
+      $$ \begin{aligned}
+        t_{\min} \;&=\; \frac{F_V + F_L + F_{AE}}{P_\text{GPU} + P_\text{ANE} + P_\text{CPU}} \\[4pt]
+        &=\; \frac{60 + 1224 + 338 \text{ GFLOP}}{3.23 + 5.7 + 1.8 \text{ TFLOPS}} \;=\; \frac{1622}{10.73} \;\approx\; 151 \text{ ms} \;\;\Longrightarrow\;\; 6.6 \text{ Hz}
+      \end{aligned} $$
+    </p>
+    <p>
+      This is of course naive. But we can start from here taking it as a reminder.
+    </p>
   </section>
 
   <section>
     <h2>Progress</h2>
 
+    <h3>Baseline: 0.81&nbsp;Hz</h3>
     <p>
-      &pi;0 on MacBook decomposes into three stages per cycle:
+      We start with a simple PyTorch port of the reference implementation. The major difference is swapping the CUDA backend for Metal Performance Shaders (MPS). The result is about 1.24 seconds per cycle.
+      At this rate the robot replans about once per second, and most of the time is spent in the vision and language prefix build up (V+L prefix, we denote as L from now on). And in particular, if we look inside L, 92&nbsp;% is consumed by the MLP matmul.
     </p>
 
-    <ul>
-      <li><strong>V</strong>ision &mdash; SigLIP-So400m, one 224&times;224 image &rarr; 256 tokens.</li>
-      <li><strong>L</strong>anguage &mdash; Gemma-1-2B prefix, bidirectional over 304 tokens (256 vision + 48 text). Text follows the Dexmal testing example.</li>
-      <li><strong>AE</strong> (action expert) &mdash; Gemma-300M, 10 Euler steps of flow matching over 51 suffix tokens.</li>
-    </ul>
+    <figure>
+      <svg width="540" height="170" viewBox="0 0 540 170" style="font-family: et-book, Georgia, serif;">
+        <text x="55" y="50" text-anchor="end" font-size="12" fill="#333">GPU</text>
+        <text x="55" y="90" text-anchor="end" font-size="12" fill="#333">ANE</text>
+        <text x="55" y="130" text-anchor="end" font-size="12" fill="#333">CPU</text>
 
+        <rect x="60" y="36" width="44" height="28" fill="#76b7b2" rx="2"/>
+        <text x="82" y="54" text-anchor="middle" font-size="11" fill="white">V</text>
+        <text x="82" y="78" text-anchor="middle" font-size="9" fill="#6b7280">140&nbsp;ms</text>
+        <rect x="104" y="36" width="218" height="28" fill="#b07aa1" rx="2"/>
+        <text x="213" y="54" text-anchor="middle" font-size="11" fill="white">L</text>
+        <text x="213" y="78" text-anchor="middle" font-size="9" fill="#6b7280">697&nbsp;ms</text>
+        <rect x="322" y="36" width="189" height="28" fill="#e15759" rx="2"/>
+        <text x="416" y="54" text-anchor="middle" font-size="11" fill="white">AE</text>
+        <text x="416" y="78" text-anchor="middle" font-size="9" fill="#6b7280">606&nbsp;ms</text>
+
+        <line x1="511" y1="22" x2="511" y2="155" stroke="#999" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="513" y="20" font-size="10" fill="#6b7280">cycle end</text>
+
+        <line x1="60" y1="155" x2="515" y2="155" stroke="#999" stroke-width="1"/>
+        <line x1="60" y1="152" x2="60" y2="158" stroke="#999"/>
+        <line x1="511" y1="152" x2="511" y2="158" stroke="#999"/>
+        <text x="60" y="167" text-anchor="middle" font-size="10" fill="#6b7280">0</text>
+        <text x="511" y="167" text-anchor="middle" font-size="10" fill="#6b7280">~1.24 s (1237&nbsp;ms)</text>
+      </svg>
+      <label for="mn-baseline-fig" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-baseline-fig" class="margin-toggle"/>
+      <span class="marginnote">Baseline schedule: PyTorch-MPS runs every stage on the GPU sequentially. Cycle ~1.24&nbsp;s / 0.81&nbsp;Hz.</span>
+    </figure>
+    <p>The issue is obvious:</p>
+    <ol>
+      <li>Whether the GPU computation is efficient or not.</li>
+      <li>MPS dispatches everything to the GPU, so the ANE and CPU sit idle the entire cycle.</li>
+    </ol>
     <p>
-      The PyTorch-MPS baseline spends 140&nbsp;/&nbsp;697&nbsp;/&nbsp;606&nbsp;ms on V&nbsp;/&nbsp;L&nbsp;/&nbsp;AE &mdash; L dominates, and inside L the MLPs are 92&nbsp;% of the FLOPs.
+        We will answer these two issues in phase 1 and phase 2.
     </p>
 
+    <h3>Phase 1: CoreML with ANE, 1.83&nbsp;Hz</h3>
     <p>
-      <strong>Phase 0</strong> &mdash; fork the bottleneck apart. MLX port of L (fused Metal SDPA + <code>steel_gemm_fused</code>), alternative Metal backends (ggml / llama.cpp), hand-written fused-MLP kernels, ANE-GPU MLP bridging, and token-parallel MLP all characterise the ceilings; <a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase0">realtime-vla-mac-phase0</a> has the logs.
-    </p>
-
-    <p>
-      <strong>Phase 1</strong> &mdash; ship it. Move the dispatch to pure Objective-C + CoreML, measure every stage on every engine, spread V, L, AE across three distinct engines so the steady-state cycle becomes <code>max(V, L, AE)</code> instead of <code>sum(&hellip;)</code>.
+      Starting from the baseline observation, we want to actually use the ANE instead of the GPU.
+      We drop PyTorch and rewrite the inference in Objective-C, which gives direct access to CoreML and lets us dispatch each stage to the CPU, ANE, or GPU. We measure every stage on every engine:
     </p>
 
     <figure>
       <table>
-        <thead><tr><th>stage</th><th>engine</th><th style="text-align:right">p50 (standalone)</th><th style="text-align:right">p50 (concurrent)</th></tr></thead>
+        <colgroup>
+          <col style="width: 40%" />
+          <col style="width: 20%" />
+          <col style="width: 20%" />
+          <col style="width: 20%" />
+        </colgroup>
+        <thead><tr><th>stage</th><th style="text-align:right">ANE</th><th style="text-align:right">GPU</th><th style="text-align:right">CPU</th></tr></thead>
         <tbody>
-          <tr><td>V (vision)</td><td>CoreML GPU</td><td style="text-align:right">83&nbsp;ms</td><td style="text-align:right">102&nbsp;ms</td></tr>
-          <tr><td>L (LLM prefix + K/V)</td><td>CoreML ANE</td><td style="text-align:right">305&nbsp;ms</td><td style="text-align:right">303&nbsp;ms</td></tr>
-          <tr><td>AE (10 Euler steps)</td><td>CoreML CPU (AMX)</td><td style="text-align:right">254&nbsp;ms</td><td style="text-align:right">326&nbsp;ms</td></tr>
-          <tr><td>first action (V&nbsp;&rarr;&nbsp;L&nbsp;&rarr;&nbsp;AE, serial)</td><td></td><td style="text-align:right">&mdash;</td><td style="text-align:right">726&nbsp;ms</td></tr>
-          <tr><td>steady-state cycle (three-engine concurrent)</td><td></td><td style="text-align:right"></td><td style="text-align:right"><strong>344&nbsp;ms &rarr; 2.9&nbsp;Hz</strong></td></tr>
+          <tr><td>V (vision)</td><td style="text-align:right">36&nbsp;ms</td><td style="text-align:right">83&nbsp;ms</td><td style="text-align:right">81&nbsp;ms</td></tr>
+          <tr><td>L (V+L prefix)</td><td style="text-align:right">305&nbsp;ms</td><td style="text-align:right">434&nbsp;ms</td><td style="text-align:right">442&nbsp;ms</td></tr>
+          <tr><td>AE (action expert)</td><td style="text-align:right">206&nbsp;ms</td><td style="text-align:right">887&nbsp;ms</td><td style="text-align:right">255&nbsp;ms</td></tr>
         </tbody>
       </table>
     </figure>
 
     <p>
-      Every stage lives on its own engine &mdash; L on ANE doesn't contend with V on GPU doesn't contend with AE on CPU. Cycle is bottlenecked by L on ANE under concurrent load. V and AE slow ~20&nbsp;% from standalone because they share Unified Memory bandwidth; L on ANE stays flat because ANE has a dedicated datapath.
-      <label for="mn-risks" class="margin-toggle">&#8853;</label>
-      <input type="checkbox" id="mn-risks" class="margin-toggle"/>
-      <span class="marginnote">Main open risks: sustained-cycle thermal behaviour (fanless M4 Air), fp16 Euler drift in AE (fp32 accumulator fix pending), and whether K=1 semantics of &pi;0's 2.5&nbsp;s action chunk cap the reactive rate.</span>
+      In isolation, every stage is fastest on the ANE. Understandable, since the ANE is purpose-built for inference while the GPU is more general.
+      We can run all three stages serially on the ANE. This gives V&nbsp;(36&nbsp;ms) + L&nbsp;(305&nbsp;ms) + AE&nbsp;(206&nbsp;ms) = 547&nbsp;ms per cycle, 1.83&nbsp;Hz, 2.26&times; faster.
     </p>
 
+    <figure>
+      <svg width="540" height="170" viewBox="0 0 540 170" style="font-family: et-book, Georgia, serif;">
+        <text x="55" y="50" text-anchor="end" font-size="12" fill="#333">GPU</text>
+        <text x="55" y="90" text-anchor="end" font-size="12" fill="#333">ANE</text>
+        <text x="55" y="130" text-anchor="end" font-size="12" fill="#333">CPU</text>
+
+        <rect x="60" y="76" width="30" height="28" fill="#76b7b2" rx="2"/>
+        <text x="75" y="94" text-anchor="middle" font-size="11" fill="white">V</text>
+        <text x="75" y="118" text-anchor="middle" font-size="9" fill="#6b7280">36</text>
+
+        <rect x="90" y="76" width="251" height="28" fill="#b07aa1" rx="2"/>
+        <text x="215" y="94" text-anchor="middle" font-size="11" fill="white">L</text>
+        <text x="215" y="118" text-anchor="middle" font-size="9" fill="#6b7280">305&nbsp;ms</text>
+
+        <rect x="341" y="76" width="170" height="28" fill="#e15759" rx="2"/>
+        <text x="426" y="94" text-anchor="middle" font-size="11" fill="white">AE</text>
+        <text x="426" y="118" text-anchor="middle" font-size="9" fill="#6b7280">206&nbsp;ms</text>
+
+        <line x1="511" y1="22" x2="511" y2="155" stroke="#999" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="513" y="20" font-size="10" fill="#6b7280">cycle end</text>
+
+        <line x1="60" y1="155" x2="515" y2="155" stroke="#999" stroke-width="1"/>
+        <line x1="60" y1="152" x2="60" y2="158" stroke="#999"/>
+        <line x1="511" y1="152" x2="511" y2="158" stroke="#999"/>
+        <text x="60" y="167" text-anchor="middle" font-size="10" fill="#6b7280">0</text>
+        <text x="511" y="167" text-anchor="middle" font-size="10" fill="#6b7280">547 ms</text>
+      </svg>
+      <label for="mn-phase1-fig" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-phase1-fig" class="margin-toggle"/>
+      <span class="marginnote">Phase&nbsp;1: all three stages serial on the ANE. V (36&nbsp;ms) &rarr; L (305&nbsp;ms) &rarr; AE (206&nbsp;ms). Cycle 547&nbsp;ms / 1.83&nbsp;Hz. The GPU and CPU sit idle.</span>
+    </figure>
     <p>
-      Correctness: V / L match PyTorch fp32 with cos &ge; 0.9999 on every engine (ANE / GPU / CPU); AE matches to cos &ge; 0.99 (limited by fp16 Euler accumulator, engine-independent). CPU routing verified via <a href="https://github.com/LuxxxLucy/asmonitor">asmonitor</a> &mdash; ANE stays idle while <code>MLComputeUnits.cpuOnly</code> is in effect.
+      <label for="mn-rms" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-rms" class="margin-toggle"/>
+      <span class="marginnote">One tiny trick along the way: on the ANE we work in fp16, but RMSNorm's running sum &Sigma;x&sup2; overflows for real activations. We do a rewrite that scales x by 1/rmax before squaring.</span>
+    </p>
+
+
+    <h3>Phase 2: token parallelization and async scheduling, 3.08&nbsp;Hz</h3>
+    <p>
+      Phase&nbsp;1 runs all three stages on the ANE while the GPU and CPU are idle. For this we provide two ideas: token parallelization and async scheduling.
+    </p>
+
+    <h4>Token parallelization: split L across ANE and GPU</h4>
+    <p>
+      The bidirectional attention forces a synchronization point (every attention layer needs all token embeddings to be present), but the MLP before the attention is pointwise across tokens. So the MLP rows for different tokens can run on different engines in parallel, as long as they rejoin before the next attention.
+    </p>
+    <p>
+      We split L's MLP at the token dimension so both engines work in parallel, with a semaphore syncing the two halves at each of L's 18 layers. This drops L standalone from 305 to 245&nbsp;ms.
+    </p>
+
+    <h4>Async scheduling: overlap stages across frames</h4>
+    <p>
+      After consideration we decide to move AE off the ANE onto the CPU<label for="sn-ae-cpu" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-ae-cpu" class="margin-toggle"/>
+      <span class="sidenote">AE on CPU is 24&nbsp;% slower than AE on ANE standalone, but it frees the ANE for V and L.</span>
+      so it can run concurrently with L. We then overlap across frames: AE of frame n&minus;1 runs concurrently with V and L of frame n, so the cycle becomes the slowest single engine rather than the sum. Concurrency jams the memory bandwidth; AE on CPU inflates from 245 to 330&nbsp;ms.
+    </p>
+
+    <figure>
+      <svg width="540" height="190" viewBox="0 0 540 190" style="font-family: et-book, Georgia, serif;">
+        <text x="55" y="50" text-anchor="end" font-size="12" fill="#333">GPU</text>
+        <text x="55" y="90" text-anchor="end" font-size="12" fill="#333">ANE</text>
+        <text x="55" y="130" text-anchor="end" font-size="12" fill="#333">CPU</text>
+
+        <rect x="99" y="36" width="185" height="28" fill="#b07aa1" rx="2" opacity="0.6"/>
+        <text x="192" y="54" text-anchor="middle" font-size="11" fill="white">L_n (GPU)</text>
+        <rect x="323" y="36" width="186" height="28" fill="#b07aa1" rx="2" opacity="0.6"/>
+        <text x="416" y="54" text-anchor="middle" font-size="11" fill="white">L_n+1 (GPU)</text>
+
+        <rect x="74" y="76" width="25" height="28" fill="#76b7b2" rx="2"/>
+        <text x="86" y="94" text-anchor="middle" font-size="10" fill="white">V_n</text>
+        <rect x="99" y="76" width="185" height="28" fill="#b07aa1" rx="2"/>
+        <text x="192" y="94" text-anchor="middle" font-size="11" fill="white">L_n (ANE)</text>
+        <rect x="298" y="76" width="25" height="28" fill="#76b7b2" rx="2"/>
+        <text x="310" y="94" text-anchor="middle" font-size="10" fill="white">V_n+1</text>
+        <rect x="323" y="76" width="186" height="28" fill="#b07aa1" rx="2"/>
+        <text x="416" y="94" text-anchor="middle" font-size="11" fill="white">L_n+1 (ANE)</text>
+
+        <rect x="60" y="116" width="224" height="28" fill="#e15759" rx="2"/>
+        <text x="172" y="134" text-anchor="middle" font-size="11" fill="white">AE_n&minus;1</text>
+        <rect x="284" y="116" width="225" height="28" fill="#e15759" rx="2"/>
+        <text x="396" y="134" text-anchor="middle" font-size="11" fill="white">AE_n</text>
+
+        <line x1="284" y1="22" x2="284" y2="155" stroke="#999" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="509" y1="22" x2="509" y2="155" stroke="#999" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="170" y="20" text-anchor="middle" font-size="10" fill="#6b7280">cycle 1</text>
+        <text x="395" y="20" text-anchor="middle" font-size="10" fill="#6b7280">cycle 2</text>
+
+        <line x1="60" y1="155" x2="515" y2="155" stroke="#999" stroke-width="1"/>
+        <line x1="60" y1="152" x2="60" y2="158" stroke="#999"/>
+        <line x1="284" y1="152" x2="284" y2="158" stroke="#999"/>
+        <line x1="509" y1="152" x2="509" y2="158" stroke="#999"/>
+        <text x="60" y="170" text-anchor="middle" font-size="10" fill="#6b7280">0</text>
+        <text x="284" y="170" text-anchor="middle" font-size="10" fill="#6b7280">325</text>
+        <text x="509" y="170" text-anchor="middle" font-size="10" fill="#6b7280">650 ms</text>
+      </svg>
+      <label for="mn-async" class="margin-toggle">&#8853;</label>
+      <input type="checkbox" id="mn-async" class="margin-toggle"/>
+      <span class="marginnote">Async pipelined steady state, two cycles shown. AE runs back-to-back on CPU; V and L of frame n overlap with AE of frame n&minus;1. The cycle is ~325&nbsp;ms, set by the slowest engine (AE) plus dispatch overhead.</span>
+    </figure>
+
+    <h3>Phase 3: quantization, 3.57&nbsp;Hz</h3>
+    <p>
+      Phase&nbsp;2 made the memory-bandwidth ceiling visible: each stage takes longer under concurrency than standalone, which is the signature of a bus-bound workload. From here we have two options:
+    </p>
+    <ol>
+      <li>Move to a higher-tier chip with more bandwidth.</li>
+      <li>Reduce the weight-byte footprint through pruning, distillation, or quantization.</li>
+    </ol>
+    <p>
+      We pick quantization. We quantize each stage's weights in the format that suits its engine:
+    </p>
+
+    <figure>
+      <table>
+        <thead><tr><th>stage</th><th>engine</th><th>quantization</th></tr></thead>
+        <tbody>
+          <tr><td>V</td><td>ANE</td><td>4-bit k-means palettization, group = 16</td></tr>
+          <tr><td>L (ANE half)</td><td>ANE</td><td>4-bit k-means palettization, group = 16</td></tr>
+          <tr><td>L (GPU half)</td><td>GPU</td><td>linear per-block 4-bit, block = 32</td></tr>
+          <tr><td>AE</td><td>CPU</td><td>linear per-channel 8-bit</td></tr>
+        </tbody>
+      </table>
+    </figure>
+
+    <p>
+      L and AE are both shorter, so the Phase&nbsp;2 async slack tightens. Finally we arrive at 280&nbsp;ms, 3.57&nbsp;Hz.
+      That is 4.42&times; the baseline, and only 10.3&times; behind Dexmal on a 4090 with 16&times; the compute and 8&times; the memory bandwidth.
     </p>
 
   </section>
 
   <section>
-    <h2>Code</h2>
-    <figure>
-      <table>
-        <thead><tr><th>repo</th><th>role</th><th>headline</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><a href="https://github.com/LuxxxLucy/pytorch-pi0-baseline">pytorch-pi0-baseline</a></td>
-            <td>PyTorch MPS reference</td>
-            <td>0.8&nbsp;Hz &mdash; <code>uv run baseline.py</code></td>
-          </tr>
-          <tr>
-            <td><a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase0">realtime-vla-mac-phase0</a></td>
-            <td>exploration log (MLX / llama.cpp / ggml / ANE-GPU bridging)</td>
-            <td>characterises the ceilings</td>
-          </tr>
-          <tr>
-            <td><a href="https://github.com/LuxxxLucy/realtime-vla-mac-phase1">realtime-vla-mac-phase1</a></td>
-            <td>shipped ObjC + CoreML implementation</td>
-            <td><strong>2.9&nbsp;Hz</strong> on base M4 Air</td>
-          </tr>
-        </tbody>
-      </table>
-    </figure>
+    <h2>Discussion: the cost of bidirectional attention in the V+L prefix</h2>
+    <p>
+
+      Aside from the memory bandwidth issue, which is too boring, we do get some lessons on the effect of architecture design on inference performance. The most important finding is that
+      the V+L prefix (stage L) dominates the compute. Every phase in this post is in some sense a workaround for this.
+    </p>
+    <p>
+      It runs from scratch because &pi;0 inherits PaliGemma's prefix-LM design: vision tokens and language tokens sit in a single bidirectional block inside the Gemma-2B backbone. Every language token attends to every vision token and the other way around. So the language tokens' KVs are not a function of the language tokens alone; they are entangled with the vision tokens. When the camera image changes on the next frame, the entire V+L prefix must be recomputed.
+    </p>
+    <p>
+      A causal prefix gives a totally different case. If the text tokens sit in their own causal block (text first, then image tokens attending back to text), the language KVs are a pure function of the (stable) instruction and can be cached across frames indefinitely. Only the vision tokens need recomputation each frame, and even those become incrementally cacheable if the image encoder can be made to ignore identical or stale frames.
+      In our numbers L is 50&ndash;60&nbsp;% of the serial cycle. Amortising the language half across frames, paying only the vision half each frame, would roughly halve per-frame latency, maybe a <strong>2&ndash;3&times; speedup</strong> depending on how much of V is also reusable.
+    </p>
+    <p>
+      The idea is not new for causal vision models. <em>Eventful Transformers</em><label for="sn-eventful" class="margin-toggle sidenote-number"></label>
+      <input type="checkbox" id="sn-eventful" class="margin-toggle"/>
+      <span class="sidenote">Dutson, Li, Gupta, <em>Eventful Transformers: Leveraging Temporal Redundancy in Vision Transformers</em>, ICCV 2023. <a href="https://arxiv.org/abs/2308.13494">arXiv:2308.13494</a>.</span>
+      identifies tokens whose pixels changed significantly between frames and re-processes only those, reusing cached activations for the rest.
+    </p>
+    <p>
+      We can broadly categorise published VLAs into two families:
+    </p>
+    <ul>
+      <li><strong>PaliGemma family (bidirectional V+L prefix):</strong>
+        <a href="https://arxiv.org/abs/2410.24164">&pi;0</a>,
+        <a href="https://arxiv.org/abs/2504.16054">&pi;0.5</a>,
+        <a href="https://www.physicalintelligence.company/research/fast">&pi;0-FAST</a>,
+        <a href="https://arxiv.org/abs/2501.15830">SpatialVLA</a>,
+        and Dexmal's <a href="https://arxiv.org/abs/2510.26742">realtime-VLA</a>. All inherit PaliGemma's bidirectional prefix-LM mask.
+      </li>
+      <li><strong>Qwen / Llama family (causal prefix):</strong>
+        <a href="https://arxiv.org/abs/2502.14420">ChatVLA</a>,
+        <a href="https://arxiv.org/abs/2510.23511">Dexbotic</a>,
+        <a href="https://arxiv.org/abs/2510.11027">Vlaser</a> (Qwen2/2.5/3-VL backbones),
+        <a href="https://huggingface.co/blog/nvidia/gr00t-n1-7">GR00T&nbsp;N1.7</a> (Qwen3-VL VLM + DiT action head),
+        <a href="https://arxiv.org/abs/2411.19650">CogACT</a> (Llama-2 + DiT).
+        All use a causal, autoregressive decoder inherited from a more standard autoregressive VLM backbone.
+      </li>
+    </ul>
+    <p>
+        Now it is arguable that the bidirectional attention can indeed improve performance, but I doubt that this is not amendable with a more powerful backbone and more parameters. Even with much more parameter, an autoregressive backbone will make it much more efficient at inference time.
+      The MacBook Air is not a powerful machine, and that is fair. But a large fraction of the remaining gap is an architecture-level choice, not a silicon-level one. So for performance-wise, worth keeping this in mind when designing VLAs.
+    </p>
   </section>
+
 
 </article>
 </body>
